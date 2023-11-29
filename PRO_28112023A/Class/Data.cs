@@ -7,7 +7,15 @@ using System.Threading.Tasks;
 namespace PRO_28112023A.Class
 {
     public class Data
-    {        
+    {
+        public string Maq1StartRead { get; set; }
+        public string Maq1EndRead { get; set; }
+
+        public string Maq2StartRead { get; set; }
+        public string Maq2EndRead { get; set; }
+
+        public string HeartBeat { get; set; }
+
         public string Serial_Number { get; set; }
         public string Date { get; set; }
         public string Part_Number { get; set; }

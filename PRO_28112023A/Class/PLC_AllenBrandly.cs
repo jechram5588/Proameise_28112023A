@@ -1,4 +1,5 @@
 ﻿using HslCommunication;
+using HslCommunication.Profinet.AllenBradley;
 using HslCommunication.Profinet.Melsec;
 using Logger;
 using System;
@@ -11,25 +12,28 @@ using System.Threading.Tasks;
 
 namespace PRO_28112023A.Dlls
 {
-    public class PLC_Mitsubishi
+    public class PLC_AllenBrandly
     {
-        private MelsecMcNet melsec_net = null;
+        private AllenBradleyNet AllenLogixTCP = null;
         private readonly object PLCLock = new object();
         private bool IsConected = false;
         public Log Logger;
         private string PLC_IP = "";
         private int PLC_PORT = 0;
+        private byte PLC_Slot = 0;
+
 
         public enum TipoDato
         {
-            Float, Entero, String
+            Float, Entero, String, Boolean
         }
 
-        public PLC_Mitsubishi(string ServiceName, string Ip, int Port)
+        public PLC_AllenBrandly(string ServiceName, string Ip, int Port, byte slot)
         {
             Logger = new Log(ServiceName);
             PLC_IP = Ip;
             PLC_PORT = Port;
+            PLC_Slot = slot;
         }
 
         #region PLC_Methods
@@ -37,8 +41,8 @@ namespace PRO_28112023A.Dlls
         {
             try
             {
-                melsec_net = null;
-                melsec_net = new MelsecMcNet();
+                AllenLogixTCP = null;
+                AllenLogixTCP = new AllenBradleyNet();
 
                 if (!System.Net.IPAddress.TryParse(PLC_IP, out System.Net.IPAddress address))
                 {
@@ -46,10 +50,12 @@ namespace PRO_28112023A.Dlls
                     return false;
                 }
 
-                melsec_net.IpAddress = PLC_IP;
-                melsec_net.Port = PLC_PORT;
-                melsec_net.ReceiveTimeOut = 2500;
-                melsec_net.ConnectClose();
+                AllenLogixTCP.IpAddress = PLC_IP;
+                AllenLogixTCP.Port = PLC_PORT;
+                AllenLogixTCP.Slot = PLC_Slot;
+
+                AllenLogixTCP.ReceiveTimeOut = 2500;
+                AllenLogixTCP.ConnectClose();
             }
             catch (Exception ex)
             {
@@ -58,7 +64,7 @@ namespace PRO_28112023A.Dlls
 
             try
             {
-                OperateResult connect = melsec_net.ConnectServer();
+                OperateResult connect = AllenLogixTCP.ConnectServer();
                 if (connect.IsSuccess)
                 {
                     Logger.PrimaryLog("Conexion a PLC", "Conectado Correctamente", EventLogEntryType.Error, true);
@@ -79,14 +85,14 @@ namespace PRO_28112023A.Dlls
         }
         public void DesconectaPLC()
         {
-            if (melsec_net != null)
+            if (AllenLogixTCP != null)
             {
                 IsConected = false;
-                melsec_net.ConnectClose();
+                AllenLogixTCP.ConnectClose();
             }
         }
 
-        public bool EscribePLC(TipoDato Tipo, string Variable, string Valor)
+        public bool WritePLC(TipoDato Tipo, string Variable, string Valor)
         {
             lock (this.PLCLock)
             {
@@ -103,21 +109,19 @@ namespace PRO_28112023A.Dlls
                         switch (Tipo)
                         {
                             case TipoDato.Entero:
-                                result = melsec_net.Write(Variable, int.Parse(Valor));
+                                result = AllenLogixTCP.Write(Variable, int.Parse(Valor));
                                 break;
                             case TipoDato.Float:
-                                result = melsec_net.Write(Variable, float.Parse(Valor, CultureInfo.InvariantCulture));
+                                result = AllenLogixTCP.Write(Variable, float.Parse(Valor, CultureInfo.InvariantCulture));
                                 break;
                             case TipoDato.String:
-                                result = melsec_net.Write(Variable, Valor);
+                                result = AllenLogixTCP.Write(Variable, Valor);
+                                break;
+                            case TipoDato.Boolean:
+                                result = AllenLogixTCP.Write(Variable, bool.Parse(Valor));
                                 break;
                         }
-                        if (result.IsSuccess)
-                        {
-                            return true;
-                        }
-                        else
-                            return false;
+                        return result.IsSuccess;
                     }
                 }
                 catch (Exception ex)
@@ -128,12 +132,12 @@ namespace PRO_28112023A.Dlls
             }
             else
             {
-                Logger.PrimaryLog("EscribePLC", "Error de null", EventLogEntryType.Error, true);
+                Logger.PrimaryLog("Escribe PLC", "Error de null", EventLogEntryType.Error, true);
                 return false;
             }
         }
 
-        public string LeePLC(TipoDato Tipo, string Variable, ushort cantidad)
+        public string ReadPLC(TipoDato Tipo, string Variable, ushort cantidad)
         {
             string res = "";
             //OperateResult result = new OperateResult();
@@ -147,16 +151,19 @@ namespace PRO_28112023A.Dlls
                 switch (Tipo)
                 {
                     case TipoDato.Entero:
-                        res = ReadResultRender(melsec_net.ReadInt16(Variable));
+                        res = ReadResultRender(AllenLogixTCP.ReadInt32(Variable));
                         break;
                     case TipoDato.Float:
-                        res = ReadResultRender(melsec_net.ReadFloat(Variable));
+                        res = ReadResultRender(AllenLogixTCP.ReadFloat(Variable));
                         break;
                     case TipoDato.String:
-                        res = ReadResultRender(melsec_net.ReadString(Variable, cantidad));
+                        res = ReadResultRender(AllenLogixTCP.ReadString(Variable, cantidad));
                         res = res.Replace("\r", "");
                         res = res.Replace('\0', ' ');
                         res = res.Replace(" ", "");
+                        break;
+                    case TipoDato.Boolean:
+                        res = ReadResultRender(AllenLogixTCP.ReadBool(Variable));
                         break;
                 }
             }
@@ -164,7 +171,7 @@ namespace PRO_28112023A.Dlls
             return res.ToString();
         }
 
-        public string[] LeerPLCBulk(string variable, int cantidad)
+        public string[] ReadPLCBulk(string variable, int cantidad)
         {
             lock (this.PLCLock)
             {
@@ -176,7 +183,7 @@ namespace PRO_28112023A.Dlls
             {
                 lock (this.PLCLock)
                 {
-                    OperateResult<byte[]> read = melsec_net.Read(variable, Convert.ToUInt16(cantidad));
+                    OperateResult<byte[]> read = AllenLogixTCP.Read(variable, Convert.ToUInt16(cantidad));
                     if (read.IsSuccess)
                     {
                         res[0] = "OK";

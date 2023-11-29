@@ -27,22 +27,24 @@ namespace PRO_28112023A
         public string PLC_IP { get; set; }
         public int PLC_Port { get; set; }
         public string PLC_HeartBeat { get; set; }
+        public byte PLC_Slot { get; set; }
 
         private Data Tags;
         List<Data> lData;
 
         public bool DebugMode = true;
-        public PLC_Mitsubishi PLC;
+        public PLC_AllenBrandly PLC;
         public Log Logger;
-        Thread ClassThread1 = null;
-        Thread ClassThread2 = null;
-        Thread ClassThread3 = null;
+
+        private Thread thMaq1 = null;
+        private Thread thMaq2 = null;
+        private Thread thAlive = null;
 
         public enum Steps
         {
-            Conexion, Desconexion, Alive,
-            StartRead, EndRead
+            Disconnect, Alive, StartRead, ReadValues, EndRead
         }
+
         public PRO_28112023A()
         {
             Logger = new Log("PRO_28112023A");
@@ -65,10 +67,9 @@ namespace PRO_28112023A
         public void Stop()
         {
             Running = false;
-            if (ClassThread1 != null)
-            {
-                ClassThread1.Abort();
-            }
+            if (thMaq1 != null) thMaq1.Abort();
+            if (thMaq2 != null) thMaq2.Abort();
+            if (thAlive != null) thAlive.Abort();
         }
         public void LoadConfig()
         {
@@ -78,11 +79,20 @@ namespace PRO_28112023A
                 lData = new List<Data>();
 
                 PLC_IP = "192.168.1.1";
-                PLC_Port = 48819;
-                PLC_HeartBeat = "HearBeart";
-                PLC = new PLC_Mitsubishi("PLC " + PLC_Port, PLC_IP, PLC_Port);
+                PLC_Port = 44818;
+                PLC_Slot = 0;
 
+                PLC = new PLC_AllenBrandly("PLC " + 4, PLC_IP, PLC_Port, PLC_Slot);
                 Tags = new Data();
+
+
+                Tags.Maq1StartRead = "Maq1StartRead";
+                Tags.Maq1EndRead = "Maq1EndRead";
+
+                Tags.Maq2StartRead = "Maq2StartRead";
+                Tags.Maq2EndRead = "Maq2EndRead";
+
+                Tags.HeartBeat = "HeartBeat";
 
                 Tags.Serial_Number = "Serial_Number";
                 Tags.Date = "Date";
@@ -118,34 +128,52 @@ namespace PRO_28112023A
             }
             if (error == 0)
             {
-                ClassThread1 = new Thread(Pruebas1);
-                ClassThread1.Start();
+                thMaq1 = new Thread(Maquina1);
+                thMaq1.Start();
+                thMaq2 = new Thread(Maquina1);
+                thMaq2.Start();
             }
         }
-        public void Pruebas1(){
-            Data a = new Data();
-            a.Serial_Number = DateTime.Now.ToLongTimeString();
-            lData.Add(a);
 
-            a = new Data();
-            a.Serial_Number = DateTime.Now.ToLongTimeString();
-            lData.Add(a);
+        public void Maquina1(){
+            Logger.PrimaryLog("Maquina1", "Iniciado", EventLogEntryType.Information, true);
+            Steps paso = Steps.StartRead;
 
-            a = new Data();
-            a.Serial_Number = DateTime.Now.ToLongTimeString();
-            lData.Add(a);
-
-            ExportaExcel();
+            Data Valores = null;
+            while (Running)
+            {
+                switch (paso)
+                {
+                    case Steps.StartRead:
+                        if (PLC.ReadPLC(PLC_AllenBrandly.TipoDato.Boolean, Tags.Maq1StartRead, 0) == "1")
+                        {
+                            Logger.PrimaryLog("Maquina1:\tStartRead", "Trigger Detectado", EventLogEntryType.Information, false);
+                            Valores = new Data();
+                            paso = Steps.ReadValues;
+                        }
+                        else
+                            Thread.Sleep(1000);
+                        break;
+                    case Steps.ReadValues:
+                        break;
+                    case Steps.EndRead:
+                        lData.Add(Valores);
+                        PLC.WritePLC(PLC_AllenBrandly.TipoDato.Boolean, Tags.Maq1EndRead, "1");
+                        paso = Steps.StartRead;
+                        Logger.PrimaryLog("Maquina1:\tEndRead", "Trigger Detectado", EventLogEntryType.Information, false);
+                        break;
+                    default:
+                        break;
+                }
+            }
+            Logger.PrimaryLog("Maquina1", "Terminado", EventLogEntryType.Information, true);
         }
-
         public DataTable ToDataTable<T>(List<T> items)
         {
             DataTable dataTable = new DataTable(typeof(T).Name);
-            //Get all the properties
             PropertyInfo[] Props = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
             foreach (PropertyInfo prop in Props)
             {
-                //Setting column names as Property names
                 dataTable.Columns.Add(prop.Name);
             }
             foreach (T item in items)
@@ -153,16 +181,12 @@ namespace PRO_28112023A
                 var values = new object[Props.Length];
                 for (int i = 0; i < Props.Length; i++)
                 {
-                    //inserting property values to datatable rows
                     values[i] = Props[i].GetValue(item, null);
                 }
                 dataTable.Rows.Add(values);
             }
-            //put a breakpoint here and check datatable
             return dataTable;
         }
-
-
         public void ExportaExcel()
         {
             try
@@ -172,11 +196,9 @@ namespace PRO_28112023A
                 {
                     SLDocument excel = new SLDocument(file);
                     SLWorksheetStatistics stats1 = excel.GetWorksheetStatistics();
-
                     DataTable dt = ToDataTable(lData);
-                    excel.ImportDataTable(stats1.EndRowIndex+1, 1, dt, false);
+                    excel.ImportDataTable(stats1.EndRowIndex + 1, 1, dt, false);
                     //System.Diagnostics.Process.Start(file);
-
                     excel.Save();
                 }
             }
@@ -185,71 +207,5 @@ namespace PRO_28112023A
                 Logger.PrimaryLog("ExportaExcel", ex.Message, EventLogEntryType.Error, true);
             }
         }
-
-        public void HiloMaq1()
-        {
-            Logger.PrimaryLog("HiloMaq1", "Proceso Hilo Maq1 Iniciado", EventLogEntryType.Information, true);
-            int cAlive = 0, intentos = 0;
-            bool BanderaAlive = false;
-
-            Steps Current = Steps.Alive, Next = Steps.Conexion;
-
-            while (Running)
-            {
-                try
-                {
-                    if (!BanderaAlive || intentos >= 3) Current = Next; else Current = Steps.Alive;
-
-                    switch (Current)
-                    {
-                        case Steps.Alive:
-                            Logger.PrimaryLog("MainRutine", "Escribe Alive", EventLogEntryType.Information, false);
-                            BanderaAlive = false;
-                            if (cAlive <= 5)
-                                cAlive++;
-                            else
-                                cAlive = 0;
-                            if (PLC.EscribePLC(PLC_Mitsubishi.TipoDato.Entero, PLC_HeartBeat, cAlive.ToString()))
-                            {
-                                intentos = 0;
-                                Thread.Sleep(250);
-                                Next = Steps.StartRead;
-                            }
-                            else
-                            {
-                                Logger.PrimaryLog("MainRutine", "Error al escribir alive", EventLogEntryType.Error, true);
-                                Thread.Sleep(250);
-                                intentos++;
-                                if (intentos > 3)
-                                {
-                                    Next = Steps.Desconexion;
-                                }
-                            }
-                            Thread.Sleep(1000);
-                            break;
-                        case Steps.StartRead:
-                            Logger.PrimaryLog("MainRutine", "Start Read", EventLogEntryType.Information, false);
-                           
-                            BanderaAlive = true;
-                            break;
-                        case Steps.Desconexion:
-                            Logger.PrimaryLog("MainRutine", "Desconect", EventLogEntryType.Information, true);
-                            PLC.DesconectaPLC();
-                            if (Running)
-                                Next = Steps.Conexion;
-                            break;
-                        default:
-                            break;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.PrimaryLog("MainRutine", ex.Message, EventLogEntryType.Error, true);
-                    Next = Steps.Desconexion;
-                }
-            }
-        }
-                
-       
     }
 }

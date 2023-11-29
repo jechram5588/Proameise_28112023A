@@ -60,7 +60,7 @@
   <ItemGroup>
     <Compile Include="Class\Data.cs" />
     <Compile Include="PRO_28112023A.cs" />
-    <Compile Include="Class\PLC_Mitsubishi.cs" />
+    <Compile Include="Class\PLC_AllenBrandly.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -75,7 +75,6 @@
   <ItemGroup>
     <None Include="app.config" />
     <None Include="packages.config" />
-    <None Include="Tags.json" />
     <None Include="Templates\template.xlsx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
