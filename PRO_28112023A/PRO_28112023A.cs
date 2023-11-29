@@ -1,13 +1,17 @@
-﻿using Logger;
+﻿using DocumentFormat.OpenXml.Drawing;
+using Logger;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using PRO_28112023A.Class;
 using PRO_28112023A.Dlls;
+using SpreadsheetLight;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,13 +24,19 @@ namespace PRO_28112023A
         public bool Running = false;
 
         /*  Parametros de la App   */
-        private Devices DMs;
+        public string PLC_IP { get; set; }
+        public int PLC_Port { get; set; }
+        public string PLC_HeartBeat { get; set; }
+
+        private Data Tags;
+        List<Data> lData;
 
         public bool DebugMode = true;
         public PLC_Mitsubishi PLC;
         public Log Logger;
-        Thread ClassThread = null;
-        JObject JsonData = null;
+        Thread ClassThread1 = null;
+        Thread ClassThread2 = null;
+        Thread ClassThread3 = null;
 
         public enum Steps
         {
@@ -55,29 +65,51 @@ namespace PRO_28112023A
         public void Stop()
         {
             Running = false;
-            if (ClassThread != null)
+            if (ClassThread1 != null)
             {
-                ClassThread.Abort();
+                ClassThread1.Abort();
             }
         }
         public void LoadConfig()
         {
             int error = 0;
-            /*Carga de parametros app*/
             try
             {
-                string file = AppDomain.CurrentDomain.BaseDirectory.ToString() + "Devices.json";
-                if (File.Exists(file))
-                {
-                    JsonData = JObject.Parse(File.ReadAllText(file));
-                    DMs = JsonConvert.DeserializeObject<Devices>(JsonData.ToString());
-                    Logger.PrimaryLog("LoadConfig", "Carga de parametros correcta", EventLogEntryType.Information, true);
-                }
-                else
-                {
-                    error += 1;
-                    Logger.PrimaryLog("LoadConfig", "Sin Archivo de configuracion", EventLogEntryType.Error, true);
-                }
+                lData = new List<Data>();
+
+                PLC_IP = "192.168.1.1";
+                PLC_Port = 48819;
+                PLC_HeartBeat = "HearBeart";
+                PLC = new PLC_Mitsubishi("PLC " + PLC_Port, PLC_IP, PLC_Port);
+
+                Tags = new Data();
+
+                Tags.Serial_Number = "Serial_Number";
+                Tags.Date = "Date";
+                Tags.Part_Number = "Part_Number";
+                Tags.Serial_Number_Actuador = "Serial_Number_Actuador";
+                Tags.Screw1_Torque = "Screw1_Torque";
+                Tags.No_Turns_1 = "No_Turns_1";
+                Tags.Screw2_Torque = "Screw2_Torque";
+                Tags.No_Turns_2 = "No_Turns_2";
+
+                Tags.Sensor1_OK = "Sensor1_OK";
+                Tags.Sensor2_OK = "Sensor2_OK";
+                Tags.Sensor3_OK = "Sensor3_OK";
+                Tags.Sensor4_OK = "Sensor4_OK";
+
+                Tags.Soft_Actuador = "Soft_Actuador";
+                Tags.Movement_Vanes = "Movement_Vanes";
+
+                Tags.Current_Amp = "Current_Amp";
+                Tags.Voltage_Vcc = "Voltage_Vcc";
+                Tags.Customer_Position = "Customer_Position";
+
+                Tags.Actuador_Speed = "Actuador_Speed";
+                Tags.Customer_QR_OK = "Customer_QR_OK";
+                Tags.Corret_Soft_Actuador_OK = "Corret_Soft_Actuador_OK";
+
+                Logger.PrimaryLog("LoadConfig", "Carga de parametros correcta", EventLogEntryType.Information, true);
             }
             catch (Exception ex)
             {
@@ -86,17 +118,82 @@ namespace PRO_28112023A
             }
             if (error == 0)
             {
-                ClassThread = new Thread(MainRutine);
-                ClassThread.Start();
+                ClassThread1 = new Thread(Pruebas1);
+                ClassThread1.Start();
             }
         }
-        public void MainRutine()
+        public void Pruebas1(){
+            Data a = new Data();
+            a.Serial_Number = DateTime.Now.ToLongTimeString();
+            lData.Add(a);
+
+            a = new Data();
+            a.Serial_Number = DateTime.Now.ToLongTimeString();
+            lData.Add(a);
+
+            a = new Data();
+            a.Serial_Number = DateTime.Now.ToLongTimeString();
+            lData.Add(a);
+
+            ExportaExcel();
+        }
+
+        public DataTable ToDataTable<T>(List<T> items)
         {
-            Logger.PrimaryLog("MainRutine", "Proceso Principal", EventLogEntryType.Information, true);
+            DataTable dataTable = new DataTable(typeof(T).Name);
+            //Get all the properties
+            PropertyInfo[] Props = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            foreach (PropertyInfo prop in Props)
+            {
+                //Setting column names as Property names
+                dataTable.Columns.Add(prop.Name);
+            }
+            foreach (T item in items)
+            {
+                var values = new object[Props.Length];
+                for (int i = 0; i < Props.Length; i++)
+                {
+                    //inserting property values to datatable rows
+                    values[i] = Props[i].GetValue(item, null);
+                }
+                dataTable.Rows.Add(values);
+            }
+            //put a breakpoint here and check datatable
+            return dataTable;
+        }
+
+
+        public void ExportaExcel()
+        {
+            try
+            {
+                string file = AppDomain.CurrentDomain.BaseDirectory.ToString() + "\\Templates\\template.xlsx";
+                if (File.Exists(file))
+                {
+                    SLDocument excel = new SLDocument(file);
+                    SLWorksheetStatistics stats1 = excel.GetWorksheetStatistics();
+
+                    DataTable dt = ToDataTable(lData);
+                    excel.ImportDataTable(stats1.EndRowIndex+1, 1, dt, false);
+                    //System.Diagnostics.Process.Start(file);
+
+                    excel.Save();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.PrimaryLog("ExportaExcel", ex.Message, EventLogEntryType.Error, true);
+            }
+        }
+
+        public void HiloMaq1()
+        {
+            Logger.PrimaryLog("HiloMaq1", "Proceso Hilo Maq1 Iniciado", EventLogEntryType.Information, true);
             int cAlive = 0, intentos = 0;
             bool BanderaAlive = false;
-            PLC = new PLC_Mitsubishi("PLC " + DMs.PLC_Port, DMs.PLC_IP, DMs.PLC_Port);
-            Steps Current = Steps.Conexion, Next = Steps.Conexion;
+
+            Steps Current = Steps.Alive, Next = Steps.Conexion;
+
             while (Running)
             {
                 try
@@ -105,20 +202,6 @@ namespace PRO_28112023A
 
                     switch (Current)
                     {
-                        case Steps.Conexion:
-                            if (PLC.ConectaPLC())
-                            {
-                                Logger.PrimaryLog("Conexion", "Conectado Correctamente", EventLogEntryType.Information, true);
-                                Next = Steps.Alive;
-                                intentos = 0;
-                                Logger.PrimaryLog("Conexion", "Inicia", EventLogEntryType.Information, false);
-                            }
-                            else
-                            {
-                                Logger.PrimaryLog("Conexion", "ERROR al conectar", EventLogEntryType.Error, true);
-                            }
-                            Thread.Sleep(1000);
-                            break;
                         case Steps.Alive:
                             Logger.PrimaryLog("MainRutine", "Escribe Alive", EventLogEntryType.Information, false);
                             BanderaAlive = false;
@@ -126,7 +209,7 @@ namespace PRO_28112023A
                                 cAlive++;
                             else
                                 cAlive = 0;
-                            if (PLC.EscribePLC(PLC_Mitsubishi.TipoDato.Entero, DMs.PLC_HeartBeat, cAlive.ToString()))
+                            if (PLC.EscribePLC(PLC_Mitsubishi.TipoDato.Entero, PLC_HeartBeat, cAlive.ToString()))
                             {
                                 intentos = 0;
                                 Thread.Sleep(250);
@@ -146,22 +229,7 @@ namespace PRO_28112023A
                             break;
                         case Steps.StartRead:
                             Logger.PrimaryLog("MainRutine", "Start Read", EventLogEntryType.Information, false);
-                            if (PLC.LeePLC(PLC_Mitsubishi.TipoDato.Entero, DMs.StartRead, 1) == "1")
-                            {
-                                Devices DMs_Data = JsonConvert.DeserializeObject<Devices>(JsonData.ToString());
-
-                                Logger.PrimaryLog("MainRutine", "Trigger", EventLogEntryType.Information, false);
-
-                                DMs_Data.Barcode = PLC.LeePLC(PLC_Mitsubishi.TipoDato.String, DMs.Barcode, 8);
-                                DMs_Data.Judgment = PLC.LeePLC(PLC_Mitsubishi.TipoDato.Entero, DMs.Judgment, 0) == "1" ? "OK" : "NG";
-
-                                LeeData(PLC, 1, 32, DMs_Data);
-
-                                PLC.EscribePLC(PLC_Mitsubishi.TipoDato.Entero, DMs.EndRead, "1");
-                                Logger.PrimaryLog("MainRutine", "End Read", EventLogEntryType.Information, false);
-
-                                Logger.PrimaryLog("MainRutine", "SQL Insert", EventLogEntryType.Information, false);
-                            }
+                           
                             BanderaAlive = true;
                             break;
                         case Steps.Desconexion:
@@ -173,114 +241,15 @@ namespace PRO_28112023A
                         default:
                             break;
                     }
-                }//end try
+                }
                 catch (Exception ex)
                 {
-                    PLC.EscribePLC(PLC_Mitsubishi.TipoDato.Entero, DMs.EndRead, "1");
                     Logger.PrimaryLog("MainRutine", ex.Message, EventLogEntryType.Error, true);
                     Next = Steps.Desconexion;
                 }
             }
         }
-
-        public void LeeData(PLC_Mitsubishi _plc, int Ini, int Fin, Devices DMs_Data)
-        {
-
-            foreach (DataPoints item in DMs_Data.DataPoints.Where(d => d.Id >= Ini && d.Id <= Fin && d.Standard.StartsWith("D")))
-            {
-                for (int i = 0; i < 3; i++)
-                {
-                    string Standard = "";
-                    if (i > 0) Logger.PrimaryLog("LeeData", item.Standard + $" Intento {i}", EventLogEntryType.Error, true);
-                    Standard = _plc.LeePLC(PLC_Mitsubishi.TipoDato.Entero, item.Standard, 0);
-                    if (Standard != "")
-                    {
-                        item.Standard = (Convert.ToInt32(Standard) / 100.0).ToString();
-                        break;
-                    }
-                }
-            }
-
-            foreach (DataPoints item in DMs_Data.DataPoints.Where(d => d.Id >= Ini && d.Id <= Fin && d.Upper.StartsWith("D")))
-            {
-                for (int i = 0; i < 3; i++)
-                {
-                    string Upper = "";
-                    if (i > 0) Logger.PrimaryLog("LeeData", item.Upper + $" Intento {i}", EventLogEntryType.Error, true);
-                    Upper = _plc.LeePLC(PLC_Mitsubishi.TipoDato.Entero, item.Upper, 0);
-                    if (Upper != "")
-                    {
-                        item.Upper = (Convert.ToInt32(Upper) / 100.0).ToString();
-                        break;
-                    }
-                }
-            }
-
-            foreach (DataPoints item in DMs_Data.DataPoints.Where(d => d.Id >= Ini && d.Id <= Fin && d.Lower.StartsWith("D")))
-            {
-                for (int i = 0; i < 3; i++)
-                {
-                    string Lower = "";
-
-                    if (i > 0) Logger.PrimaryLog("LeeData", item.Lower + $" Intento {i}", EventLogEntryType.Error, true);
-                    Lower = _plc.LeePLC(PLC_Mitsubishi.TipoDato.Entero, item.Lower, 0);
-                    if (Lower != "")
-                    {
-                        item.Lower = (Convert.ToInt32(Lower) / 100.0).ToString();
-                        break;
-                    }
-                }
-            }
-
-            foreach (DataPoints item in DMs_Data.DataPoints.Where(d => d.Id >= Ini && d.Id <= Fin && d.StdValue.StartsWith("D")))
-            {
-                for (int i = 0; i < 3; i++)
-                {
-                    string StdValue = "";
-                    if (i > 0) Logger.PrimaryLog("LeeData", item.StdValue + $" Intento {i}", EventLogEntryType.Error, true);
-                    StdValue = _plc.LeePLC(PLC_Mitsubishi.TipoDato.Entero, item.StdValue, 0);
-                    if (StdValue != "")
-                    {
-                        item.StdValue = (Convert.ToInt32(StdValue) / 100.0).ToString(); ;
-                        break;
-                    }
-                }
-            }
-
-            foreach (DataPoints item in DMs_Data.DataPoints.Where(d => d.Id >= Ini && d.Id <= Fin && d.Result.StartsWith("D")))
-            {
-                for (int i = 0; i < 3; i++)
-                {
-                    string Result = "";
-                    if (i > 0) Logger.PrimaryLog("LeeData", item.Result + $" Intento {i}", EventLogEntryType.Error, true);
-                    Result = _plc.LeePLC(PLC_Mitsubishi.TipoDato.Entero, item.Result, 0);
-                    if (Result != "")
-                    {
-                        item.Result = (Convert.ToInt32(Result) / 100.0).ToString(); ;
-                        break;
-                    }
-                }
-            }
-
-            foreach (DataPoints item in DMs_Data.DataPoints.Where(d => d.Id >= Ini && d.Id <= Fin && d.Judgment.StartsWith("D")))
-            {
-                for (int i = 0; i < 3; i++)
-                {
-                    string Judgment = "";
-
-                    if (i > 0) Logger.PrimaryLog("LeeData", item.Judgment + $" Intento {i}", EventLogEntryType.Error, true);
-                    Judgment = _plc.LeePLC(PLC_Mitsubishi.TipoDato.Entero, item.Judgment, 0);
-                    if (Judgment != "")
-                    {
-                        item.Judgment = Judgment == "1" ? "OK" : "NG";
-                        break;
-                    }
-                }
-            }
-
-
-
-        }
-
+                
+       
     }
 }

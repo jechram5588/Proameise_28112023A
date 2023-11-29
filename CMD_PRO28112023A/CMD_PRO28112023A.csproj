@@ -48,5 +48,11 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PRO_28112023A\PRO_28112023A.csproj">
+      <Project>{937BFDBF-9490-4952-9FBB-CA8F87C21BA1}</Project>
+      <Name>PRO_28112023A</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
