@@ -8,15 +8,8 @@ namespace PRO_28112023A.Class
 {
     public class Data
     {
-        public string Maq1StartRead { get; set; }
-        public string Maq1EndRead { get; set; }
-
-        public string Maq2StartRead { get; set; }
-        public string Maq2EndRead { get; set; }
-
-        public string HeartBeat { get; set; }
-
         public string Serial_Number { get; set; }
+
         public string Date { get; set; }
         public string Part_Number { get; set; }
         public string Serial_Number_Actuador { get; set; }
@@ -40,5 +33,11 @@ namespace PRO_28112023A.Class
         public string Actuador_Speed { get; set; }
         public string Customer_QR_OK { get; set; }
         public string Corret_Soft_Actuador_OK { get; set; }
+
+        public Triggers Triggers { get; set; }
+    }
+    public class Triggers {
+        public string StartRead { get; set; }
+        public string EndRead { get; set; }
     }
 }
