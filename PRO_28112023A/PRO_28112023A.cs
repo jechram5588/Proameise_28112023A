@@ -188,7 +188,6 @@ namespace PRO_28112023A
             }
             Logger.PrimaryLog("Maquina1", "Terminado", EventLogEntryType.Information, true);
         }
-
         public void Maquina2()
         {
             Logger.PrimaryLog("Maquina2", "Iniciado", EventLogEntryType.Information, true);
@@ -261,53 +260,7 @@ namespace PRO_28112023A
             }
             Logger.PrimaryLog("Maquina1", "Terminado", EventLogEntryType.Information, true);
         }
-
-        public DataTable ToDataTable<T>(List<T> items)
-        {
-            DataTable dataTable = new DataTable(typeof(T).Name);
-            PropertyInfo[] Props = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            foreach (PropertyInfo prop in Props)
-            {
-                dataTable.Columns.Add(prop.Name);
-            }
-            foreach (T item in items)
-            {
-                var values = new object[Props.Length];
-                for (int i = 0; i < Props.Length; i++)
-                {
-                    values[i] = Props[i].GetValue(item, null);
-                }
-                dataTable.Rows.Add(values);
-            }
-
-            dataTable.Columns["Serial_Number"].SetOrdinal(0);
-            dataTable.Columns["Date"].SetOrdinal(1);
-            dataTable.Columns["Part_Number"].SetOrdinal(2);
-            dataTable.Columns["Serial_Number_Actuador"].SetOrdinal(3);
-            dataTable.Columns["Screw1_Torque"].SetOrdinal(4);
-            dataTable.Columns["No_Turns_1"].SetOrdinal(5);
-            dataTable.Columns["Screw2_Torque"].SetOrdinal(6);
-            dataTable.Columns["No_Turns_2"].SetOrdinal(7);
-
-            dataTable.Columns["Sensor1_OK"].SetOrdinal(8);
-            dataTable.Columns["Sensor2_OK"].SetOrdinal(9);
-            dataTable.Columns["Sensor3_OK"].SetOrdinal(10);
-            dataTable.Columns["Sensor4_OK"].SetOrdinal(11);
-
-            dataTable.Columns["Soft_Actuador"].SetOrdinal(12);
-            dataTable.Columns["Movement_Vanes"].SetOrdinal(13);
-
-            dataTable.Columns["Current_Amp"].SetOrdinal(14);
-            dataTable.Columns["Voltage_Vcc"].SetOrdinal(15);
-            dataTable.Columns["Customer_Position"].SetOrdinal(16);
-
-            dataTable.Columns["Actuador_Speed"].SetOrdinal(17);
-            dataTable.Columns["Customer_QR_OK"].SetOrdinal(18);
-            dataTable.Columns["Corret_Soft_Actuador_OK"].SetOrdinal(19);
-
-
-            return dataTable;
-        }
+        
         public void ExportaExcel(string Id)
         {
             try
@@ -351,6 +304,51 @@ namespace PRO_28112023A
             {
                 Logger.PrimaryLog("ExportaExcel", ex.Message, EventLogEntryType.Error, true);
             }
+        }
+        public DataTable ToDataTable<T>(List<T> items)
+        {
+            DataTable dataTable = new DataTable(typeof(T).Name);
+            PropertyInfo[] Props = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            foreach (PropertyInfo prop in Props)
+            {
+                dataTable.Columns.Add(prop.Name);
+            }
+            foreach (T item in items)
+            {
+                var values = new object[Props.Length];
+                for (int i = 0; i < Props.Length; i++)
+                {
+                    values[i] = Props[i].GetValue(item, null);
+                }
+                dataTable.Rows.Add(values);
+            }
+
+            dataTable.Columns["Serial_Number"].SetOrdinal(0);
+            dataTable.Columns["Date"].SetOrdinal(1);
+            dataTable.Columns["Part_Number"].SetOrdinal(2);
+            dataTable.Columns["Serial_Number_Actuador"].SetOrdinal(3);
+            dataTable.Columns["Screw1_Torque"].SetOrdinal(4);
+            dataTable.Columns["No_Turns_1"].SetOrdinal(5);
+            dataTable.Columns["Screw2_Torque"].SetOrdinal(6);
+            dataTable.Columns["No_Turns_2"].SetOrdinal(7);
+
+            dataTable.Columns["Sensor1_OK"].SetOrdinal(8);
+            dataTable.Columns["Sensor2_OK"].SetOrdinal(9);
+            dataTable.Columns["Sensor3_OK"].SetOrdinal(10);
+            dataTable.Columns["Sensor4_OK"].SetOrdinal(11);
+
+            dataTable.Columns["Soft_Actuador"].SetOrdinal(12);
+            dataTable.Columns["Movement_Vanes"].SetOrdinal(13);
+
+            dataTable.Columns["Current_Amp"].SetOrdinal(14);
+            dataTable.Columns["Voltage_Vcc"].SetOrdinal(15);
+            dataTable.Columns["Customer_Position"].SetOrdinal(16);
+
+            dataTable.Columns["Actuador_Speed"].SetOrdinal(17);
+            dataTable.Columns["Customer_QR_OK"].SetOrdinal(18);
+            dataTable.Columns["Corret_Soft_Actuador_OK"].SetOrdinal(19);
+
+            return dataTable;
         }
     }
 }
