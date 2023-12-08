@@ -43,13 +43,13 @@ namespace PRO_28112023A
 
         private Thread thMaq1 = null;
         private Thread thMaq2 = null;
-        private Thread thAlive = null;
+        private Thread thHeartBeat = null;
 
         private string Directorio = "";
 
         public enum Steps
         {
-            Disconnect, Alive, StartRead, ReadValues, ExportarExcel, EndRead
+            Disconnect, Alive, StartRead, ReadValues, EndRead
         }
 
         public PRO_28112023A()
@@ -74,9 +74,10 @@ namespace PRO_28112023A
         public void Stop()
         {
             Running = false;
+            PLC.DesconectaPLC();
             if (thMaq1 != null) thMaq1.Abort();
             if (thMaq2 != null) thMaq2.Abort();
-            if (thAlive != null) thAlive.Abort();
+            if (thHeartBeat != null) thHeartBeat.Abort();
         }
         public void LoadConfig()
         {
@@ -132,6 +133,8 @@ namespace PRO_28112023A
                 thMaq1.Start();
                 thMaq2 = new Thread(Maquina2);
                 thMaq2.Start();
+                thHeartBeat = new Thread(HeartBeat);
+                thHeartBeat.Start();
             }
         }
 
@@ -177,7 +180,6 @@ namespace PRO_28112023A
                         paso = Steps.EndRead;
                         break;
                     case Steps.EndRead:
-                        lData.Add(Valores);
                         PLC.WritePLC(PLC_AllenBrandly.TipoDato.Boolean, TagsM1.Triggers.EndRead, "True");
                         paso = Steps.StartRead;
                         Logger.PrimaryLog("Maquina1:EndRead", "Trigger Enviado", EventLogEntryType.Information, false);
@@ -260,7 +262,22 @@ namespace PRO_28112023A
             }
             Logger.PrimaryLog("Maquina1", "Terminado", EventLogEntryType.Information, true);
         }
-        
+        public void HeartBeat()
+        {
+            bool beat = true;
+            Logger.PrimaryLog("HeartBeat", "Iniciado", EventLogEntryType.Information, true);
+            while (Running)
+            {
+                if(thMaq1.IsAlive && thMaq2.IsAlive)
+                {
+                    PLC.WritePLC(PLC_AllenBrandly.TipoDato.Boolean, "Heartbeat_PC", beat.ToString());
+                    beat = !beat;
+                }
+                Thread.Sleep(3000);
+            }
+            Logger.PrimaryLog("HeartBeat", "Terminado", EventLogEntryType.Information, true);
+        }
+
         public void ExportaExcel(string Id)
         {
             try
