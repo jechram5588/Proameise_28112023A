@@ -89,6 +89,7 @@ namespace PRO_28112023A
                 PLC_IP = "192.168.1.1";
                 PLC_Port = 44818;
                 PLC_Slot = 0;
+                PLC_HeartBeat = "ASSY_TRACE_OFFLINE";
 
                 Configuration config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
                 Directorio = config.AppSettings.Settings["Directorio"].Value;
@@ -270,7 +271,7 @@ namespace PRO_28112023A
             {
                 if(thMaq1.IsAlive && thMaq2.IsAlive)
                 {
-                    PLC.WritePLC(PLC_AllenBrandly.TipoDato.Boolean, "Heartbeat_PC", beat.ToString());
+                    PLC.WritePLC(PLC_AllenBrandly.TipoDato.Boolean, PLC_HeartBeat, beat.ToString());
                     beat = !beat;
                 }
                 Thread.Sleep(3000);
