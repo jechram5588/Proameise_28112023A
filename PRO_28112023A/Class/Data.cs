@@ -34,6 +34,8 @@ namespace PRO_28112023A.Class
         public string Customer_QR_OK { get; set; }
         public string Corret_Soft_Actuador_OK { get; set; }
 
+        public string General_Judge { get; set; }
+
         public Triggers Triggers { get; set; }
     }
     public class Triggers {

@@ -120,6 +120,9 @@ namespace PRO_28112023A
 
                 TagsM2.Actuador_Speed = "TEST_SPEED_DATA";
 
+                TagsM2.Movement_Vanes = "TEST_VANES_MOVEMENT";
+                TagsM2.General_Judge = "TEST_GENERAL_JUDGE";
+
                 Logger.PrimaryLog("LoadConfig", "Carga de parametros correcta", EventLogEntryType.Information, true);
             }
             catch (Exception ex)
@@ -218,7 +221,7 @@ namespace PRO_28112023A
                         Valores.Part_Number = PLC.ReadPLC(PLC_AllenBrandly.TipoDato.String, TagsM2.Part_Number,7);
                         Valores.Serial_Number = PLC.ReadPLC(PLC_AllenBrandly.TipoDato.String, TagsM2.Serial_Number,27);
                         Valores.Soft_Actuador = "OK";
-                        Valores.Movement_Vanes = "OK";
+                        Valores.Movement_Vanes = PLC.ReadPLC(PLC_AllenBrandly.TipoDato.String, TagsM2.Movement_Vanes, 2);
                         Valores.Current_Amp = PLC.ReadPLC(PLC_AllenBrandly.TipoDato.Float, TagsM2.Current_Amp, 0);
                         Valores.Voltage_Vcc = PLC.ReadPLC(PLC_AllenBrandly.TipoDato.Float, TagsM2.Voltage_Vcc, 0);
                         Valores.Customer_Position = PLC.ReadPLC(PLC_AllenBrandly.TipoDato.Float, TagsM2.Customer_Position, 0);
@@ -226,6 +229,9 @@ namespace PRO_28112023A
                         Valores.Actuador_Speed = PLC.ReadPLC(PLC_AllenBrandly.TipoDato.Float, TagsM2.Actuador_Speed, 0);
                         Valores.Customer_QR_OK = "OK";
                         Valores.Corret_Soft_Actuador_OK = "OK";
+
+                        Valores.General_Judge = PLC.ReadPLC(PLC_AllenBrandly.TipoDato.String, TagsM2.General_Judge, 2);
+
 
                         lock (DatosLock) {
                             var data = lData.Find(x => x.Serial_Number_Actuador == Id_Serial);
@@ -241,6 +247,7 @@ namespace PRO_28112023A
                                 data.Actuador_Speed = Valores.Actuador_Speed;
                                 data.Customer_QR_OK = Valores.Customer_QR_OK;
                                 data.Corret_Soft_Actuador_OK = Valores.Corret_Soft_Actuador_OK;
+                                data.General_Judge = Valores.General_Judge;
                                 Logger.PrimaryLog("Maquina2:", "Encontrado", EventLogEntryType.Information, false);
                             }
                             else { 
@@ -270,7 +277,9 @@ namespace PRO_28112023A
             {
                 if(thMaq1.IsAlive && thMaq2.IsAlive)
                 {
+                    Console.WriteLine("alive");
                     PLC.WritePLC(PLC_AllenBrandly.TipoDato.Boolean, "Heartbeat_PC", beat.ToString());
+                    //PLC.WritePLC(PLC_AllenBrandly.TipoDato.Boolean, "ASSY_TRACE_KEEP_ALIVE", beat.ToString());
                     beat = !beat;
                 }
                 Thread.Sleep(3000);
@@ -364,6 +373,7 @@ namespace PRO_28112023A
             dataTable.Columns["Actuador_Speed"].SetOrdinal(17);
             dataTable.Columns["Customer_QR_OK"].SetOrdinal(18);
             dataTable.Columns["Corret_Soft_Actuador_OK"].SetOrdinal(19);
+            dataTable.Columns["General_Judge"].SetOrdinal(20);
 
             return dataTable;
         }
