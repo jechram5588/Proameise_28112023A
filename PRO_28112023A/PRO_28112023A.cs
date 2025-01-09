@@ -121,8 +121,8 @@ namespace PRO_28112023A
 
                 TagsM2.Actuador_Speed = "TEST_SPEED_DATA";
 
-                TagsM2.Movement_Vanes = "TEST_VANES_MOVEMENT";
-                TagsM2.General_Judge = "TEST_GENERAL_JUDGE";
+                TagsM2.Movement_Vanes = "TEST_VANES_MOVEMENT.DATA";
+                TagsM2.General_Judge = "TEST_GENERAL_JUDGE.DATA";
 
                 Logger.PrimaryLog("LoadConfig", "Carga de parametros correcta", EventLogEntryType.Information, true);
             }
